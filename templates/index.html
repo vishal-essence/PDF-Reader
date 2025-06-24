@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Reader</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #0069de;
+            color: white;
+            position: fixed;
+            width: 100%;
+        }
+        .navbar-brand {
+            font-weight: 900;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #0069de;
+            color: white;
+            height: calc(100vh - 56px);
+            position: fixed;
+            left: 0;
+            top: 56px;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 70px 20px 20px;
+        }
+        .pdf-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            min-height: calc(100vh - 96px);
+        }
+        .pdf-page {
+            max-width: 100%;
+            margin: 0 auto;
+            display: block;
+        }
+        .toolbar {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .btn-toolbar {
+            margin-right: 10px;
+        }
+        .page-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .page-info {
+            margin: 0 15px;
+        }
+        .zoom-controls {
+            margin-left: auto;
+        }
+        .mt-5 {
+            margin-top: 10rem !important;
+        }
+                .signature-field {
+            position: absolute;
+            border: 2px dashed #007bff;
+            background-color: rgba(0, 123, 255, 0.1);
+            cursor: pointer;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: none;
+        }
+        .document-info {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .signature-list {
+            padding: 15px;
+        }
+        .signature-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .signature-item:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        .signature-header {
+            display: flex;
+            justify-content: space-between;
+            color:black;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .signature-status {
+            font-size: 0.9em;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: rgba(0,0,0,0.05);
+        }
+        .signature-details {
+            font-size: 0.9em;
+        }
+        .detail-row {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            color: #666;
+        }
+        .detail-row i {
+            width: 20px;
+            margin-right: 8px;
+            color: #999;
+        }
+        .modal-header.bg-primary {
+            background-color: #2c3e50 !important;
+        }
+        .card {
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .border-primary {
+            border-width: 2px !important;
+        }
+        .badge {
+            padding: 0.35em 0.65em;
+            border-radius: 0.25rem;
+        }
+        .btn-close-white {
+            filter: brightness(0) invert(1);
+        }
+        .list-unstyled li {
+            margin-bottom: 0.5rem;
+        }
+        .list-unstyled i {
+            margin-right: 0.5rem;
+        }
+        .no-document-message {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .no-document-message i {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .no-document-message h3 {
+            margin-bottom: 10px;
+        }
+        .no-document-message p {
+            font-size: 16px;
+        }
+        .top-toolbar {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .btn-icon {
+            padding: 0.375rem 0.75rem;
+            background: none;
+            border: none;
+            color: #495057;
+        }
+        .btn-icon:hover {
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .page-input {
+            display: flex;
+            align-items: center;
+        }
+        .page-input input {
+            text-align: center;
+            padding: 0.25rem 0.5rem;
+        }
+        .form-control-sm {
+            height: calc(1.5em + 0.5rem + 2px);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            border-radius: 0.2rem;
+        }
+        .pdf-container {
+            padding: 2rem;
+            background-color: #e9ecef;
+            min-height: calc(100vh - 50px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .pdf-page {
+            max-width: 100%;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">PDF Reader</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light me-2" onclick="createNewDocument()">
+                    <i class="fas fa-plus"></i> New
+                </button>
+                <button class="btn btn-outline-light" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-folder-open"></i> Open
+                </button>
+                <input type="file" id="fileInput" accept=".pdf" style="display: none" onchange="handleFileSelect(event)">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="document-info" id="documentInfo">
+            <h5>Document Information</h5>
+            <div id="documentDetails">
+                <p>No document loaded</p>
+            </div>
+        </div>
+        <div class="signature-list">
+            <h5>Signatures Details</h5>
+            <div id="signatureList"></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-toolbar" id="documentToolbar" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center p-2">
+                <div class="page-navigation d-flex align-items-center">
+                    <button class="btn btn-icon" onclick="changePage(-1)" title="Previous Page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-input mx-2">
+                        <input type="number" id="currentPageInput" class="form-control form-control-sm" style="width: 60px;" min="1">
+                        <span class="mx-1">of</span>
+                        <span id="totalPages">0</span>
+                    </div>
+                    <button class="btn btn-icon" onclick="changePage(1)" title="Next Page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="zoom-controls d-flex align-items-center">
+                    <button class="btn btn-icon" onclick="changeZoom(-0.1)" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <select class="form-select form-select-sm mx-2" id="zoomSelect" style="width: 100px;" onchange="setZoom(this.value)">
+                        <option value="0.5">50%</option>
+                        <option value="0.75">75%</option>
+                        <option value="1" selected>100%</option>
+                        <option value="1.25">125%</option>
+                        <option value="1.5">150%</option>
+                        <option value="2">200%</option>
+                    </select>
+                    <button class="btn btn-icon" onclick="changeZoom(0.1)" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-container" id="pdfContainer">
+            <img id="pdfPage" class="pdf-page" style="display: none">
+            <div id="noDocumentMessage" class="text-center mt-5">
+                <i class="fas fa-file-pdf fa-5x text-muted"></i>
+                <h3 class="mt-3 text-muted">No Document Loaded</h3>
+                <p class="text-muted">Open a PDF file or create a new document to get started</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading" id="loadingIndicator">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Processing...</div>
+    </div>
+
+    <!-- Create Document Modal -->
+    <div class="modal fade" id="createDocumentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="documentTitle" class="form-label">Document Title</label>
+                        <input type="text" class="form-control" id="documentTitle" placeholder="Enter document title">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Page Size</label>
+                        <select class="form-select" id="pageSize">
+                            <option value="a4">A4</option>
+                            <option value="letter">Letter</option>
+                            <option value="legal">Legal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Orientation</label>
+                        <select class="form-select" id="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="handleCreateDocument()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trial/Paid Document Modal -->
+    <div class="modal fade" id="trialPaidModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Create New Document</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-file-pdf fa-4x text-primary mb-3"></i>
+                        <h4>Start Creating Documents</h4>
+                        <p class="text-muted">Choose your plan to start creating documents</p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Free Trial</h5>
+                                    <p class="card-text">Try our basic features for free</p>
+                                    <ul class="list-unstyled text-start">
+                                        <li><i class="fas fa-check text-success"></i> Create basic documents</li>
+                                        <li><i class="fas fa-check text-success"></i> Add signatures</li>
+                                        <li><i class="fas fa-check text-success"></i> Limited to 3 documents</li>
+                                    </ul>
+                                    <button class="btn btn-outline-primary w-100" onclick="startFreeTrial()">
+                                        Start Free Trial
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title">Premium</h5>
+                                    <p class="card-text">Get full access to all features</p>
+                                    <ul class="list-unstyled text-start">
+                                        <li><i class="fas fa-check text-success"></i> Unlimited documents</li>
+                                        <li><i class="fas fa-check text-success"></i> Advanced features</li>
+                                        <li><i class="fas fa-check text-success"></i> Priority support</li>
+                                    </ul>
+                                    <button class="btn btn-primary w-100" onclick="redirectToPremium()">
+                                        Get Premium
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentSession = null;
+        let currentPage = 0;
+        let pageCount = 0;
+        let currentZoom = 1.0;
+        let signatures = [];
+        let isAddingField = false;
+        let currentFieldType = null;
+
+        // Create Document Modal
+        const createDocumentModal = new bootstrap.Modal(document.getElementById('createDocumentModal'));
+
+        // Trial/Paid Document Modal
+        const trialPaidModal = new bootstrap.Modal(document.getElementById('trialPaidModal'));
+
+        function createNewDocument() {
+            trialPaidModal.show();
+        }
+
+        function startFreeTrial() {
+            // Close the trial/paid modal
+            trialPaidModal.hide();
+            // Show the document creation modal
+            createDocumentModal.show();
+        }
+
+        function redirectToPremium() {
+            // Remove msbdocs redirect - just show an alert for now
+            alert('Premium features are not available in this version.');
+        }
+
+        async function handleCreateDocument() {
+            const title = document.getElementById('documentTitle').value;
+            const pageSize = document.getElementById('pageSize').value;
+            const orientation = document.getElementById('orientation').value;
+
+            if (!title) {
+                alert('Please enter a document title');
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch('/create_document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title,
+                        pageSize,
+                        orientation
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create document');
+                }
+
+                handleDocumentLoad(data);
+                createDocumentModal.hide();
+            } catch (error) {
+                console.error('Error creating document:', error);
+                alert(error.message || 'Failed to create document. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading();
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+
+                const data = await response.json();
+                handleDocumentLoad(data);
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Failed to upload file');
+            } finally {
+                hideLoading();
+                event.target.value = ''; // Reset file input
+            }
+        }
+
+        function handleDocumentLoad(data) {
+            currentSession = data.session_id;
+            currentPage = 0;
+            pageCount = data.page_count;
+            signatures = data.signatures;
+            
+            updateDocumentInfo(data.document_info);
+            updateSignatureList();
+            displayPage(data.first_page);
+            updatePageInfo();
+            
+            // Show toolbar when document is loaded
+            document.getElementById('documentToolbar').style.display = 'block';
+        }
+
+        function updateDocumentInfo(info) {
+            const details = document.getElementById('documentDetails');
+            details.innerHTML = `
+                <p><strong>Title:</strong> ${info.title || 'Untitled'}</p>
+                <p><strong>Pages:</strong> ${info.page_count}</p>
+                <p><strong>Author:</strong> ${info.author || 'Unknown'}</p>
+                <p><strong>Created:</strong> ${info.creation_date || 'Unknown'}</p>
+                <p><strong>Modified:</strong> ${info.modification_date || 'Unknown'}</p>
+            `;
+        }
+
+        function updateSignatureList() {
+            const list = document.getElementById('signatureList');
+            if (!signatures || signatures.length === 0) {
+                list.innerHTML = '<p>No signatures found</p>';
+                return;
+            }
+            list.innerHTML = signatures.map((sig, index) => {
+                let label = '';
+                let statusClass = 'text-secondary';
+                let statusIcon = 'fa-info-circle';
+                
+                if (sig.type && sig.type.toLowerCase().includes('signature')) {
+                    label = '<i class="fas fa-certificate text-success me-1"></i> Digital Signature';
+                    statusIcon = 'fa-check-circle';
+                    statusClass = 'text-success';
+                } else if (sig.type && sig.type.toLowerCase().includes('estamp')) {
+                    label = '<i class="fas fa-stamp text-primary me-1"></i> E-Stamp';
+                    statusIcon = 'fa-check-circle';
+                    statusClass = 'text-primary';
+                } else {
+                    label = '<i class="fas fa-info-circle text-secondary me-1"></i> Other';
+                }
+
+                return `
+                    <div class="signature-item" onclick="navigateToSignature(${index})">
+                        <div class="signature-header">
+                            <strong>${label}</strong>
+                            ${sig.valid !== undefined ? `
+                                <span class="signature-status ${statusClass}">
+                                    <i class="fas ${statusIcon}"></i>
+                                    ${sig.valid ? 'Valid' : 'Invalid'}
+                                </span>
+                            ` : ''}
+                        </div>
+                        <div class="signature-details">
+                            <div class="detail-row">
+                                <i class="fas fa-file-alt"></i>
+                                <span>Page ${sig.page ? sig.page : 'N/A'}</span>
+                            </div>
+                            ${sig.content ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-tag"></i>
+                                    <span>${sig.content}</span>
+                                </div>
+                            ` : ''}
+                            ${sig.signer ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-user"></i>
+                                    <span>${sig.signer}</span>
+                                </div>
+                            ` : ''}
+                            ${sig.date ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>${sig.date}</span>
+                                </div>
+                            ` : ''}
+                            ${sig.reason ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-comment"></i>
+                                    <span>${sig.reason}</span>
+                                </div>
+                            ` : ''}
+                            ${sig.certificate ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-certificate"></i>
+                                    <span>Certificate: ${sig.certificate}</span>
+                                </div>
+                            ` : ''}
+                            ${sig.issuer ? `
+                                <div class="detail-row">
+                                    <i class="fas fa-building"></i>
+                                    <span>Issued by: ${sig.issuer}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function navigateToSignature(index) {
+            const signature = signatures[index];
+            if (signature && signature.page) {
+                const pageNum = typeof signature.page === 'number' ? signature.page - 1 : 0;
+                loadPage(pageNum);
+            }
+        }
+
+        async function loadPage(pageNum) {
+            if (!currentSession || pageNum < 0 || pageNum >= pageCount) return;
+
+            showLoading();
+            try {
+                const response = await fetch(`/page/${currentSession}/${pageNum}?zoom=${currentZoom}`);
+                if (!response.ok) throw new Error('Failed to load page');
+                
+                const data = await response.json();
+                currentPage = pageNum;
+                displayPage(data.page_data);
+                updatePageInfo();
+            } catch (error) {
+                console.error('Error loading page:', error);
+                alert('Failed to load page');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayPage(pageData) {
+            const container = document.getElementById('pdfContainer');
+            const page = document.getElementById('pdfPage');
+            const noDocMessage = document.getElementById('noDocumentMessage');
+            const toolbar = document.getElementById('documentToolbar');
+
+            if (pageData) {
+                page.src = `data:image/png;base64,${pageData}`;
+                page.style.display = 'block';
+                noDocMessage.style.display = 'none';
+                toolbar.style.display = 'block';
+            } else {
+                page.style.display = 'none';
+                noDocMessage.style.display = 'block';
+                toolbar.style.display = 'none';
+            }
+        }
+
+        function updatePageInfo() {
+            document.getElementById('currentPageInput').value = currentPage + 1;
+            document.getElementById('totalPages').textContent = pageCount;
+            document.getElementById('zoomSelect').value = currentZoom;
+        }
+
+        function setZoom(value) {
+            currentZoom = parseFloat(value);
+            loadPage(currentPage);
+        }
+
+        // Update page navigation with input handling
+        document.getElementById('currentPageInput').addEventListener('change', function(e) {
+            let newPage = parseInt(e.target.value) - 1;
+            if (!isNaN(newPage) && newPage >= 0 && newPage < pageCount) {
+                loadPage(newPage);
+            } else {
+                e.target.value = currentPage + 1;
+            }
+        });
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 0 && newPage < pageCount) {
+                loadPage(newPage);
+            }
+        }
+
+        function changeZoom(delta) {
+            const newZoom = Math.max(0.1, Math.min(5.0, currentZoom + delta));
+            if (newZoom !== currentZoom) {
+                currentZoom = newZoom;
+                loadPage(currentPage);
+            }
+        }
+
+        function addSignatureField(type) {
+            if (!currentSession) {
+                alert('Please open a document first');
+                return;
+            }
+
+            isAddingField = true;
+            currentFieldType = type;
+            document.body.style.cursor = 'crosshair';
+        }
+
+        async function handlePageClick(event) {
+            if (!isAddingField || !currentFieldType) return;
+
+            const page = document.getElementById('pdfPage');
+            const rect = page.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Convert coordinates to PDF space
+            const scaleX = page.naturalWidth / rect.width;
+            const scaleY = page.naturalHeight / rect.height;
+            const pdfX = x * scaleX;
+            const pdfY = y * scaleY;
+
+            showLoading();
+            try {
+                const response = await fetch('/add_signature_field', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: currentSession,
+                        type: currentFieldType,
+                        x: pdfX,
+                        y: pdfY,
+                        page: currentPage
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to add signature field');
+                
+                const data = await response.json();
+                if (data.page_data) {
+                    displayPage(data.page_data);
+                }
+            } catch (error) {
+                console.error('Error adding signature field:', error);
+                alert('Failed to add signature field');
+            } finally {
+                isAddingField = false;
+                currentFieldType = null;
+                document.body.style.cursor = 'default';
+                hideLoading();
+            }
+        }
+
+        async function saveDocument() {
+            if (!currentSession) {
+                alert('No document to save');
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`/save/${currentSession}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to save document');
+                }
+
+                if (data.success) {
+                    alert(`Document saved successfully at: ${data.path}`);
+                } else {
+                    throw new Error(data.error || 'Failed to save document');
+                }
+            } catch (error) {
+                console.error('Error saving document:', error);
+                alert(error.message || 'Failed to save document. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function updateDocumentState() {
+            const saveButton = document.querySelector('button[onclick="saveDocument()"]');
+            if (saveButton) {
+                saveButton.disabled = !currentSession;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        // Event Listeners
+        document.getElementById('pdfContainer').addEventListener('click', handlePageClick);
+
+        // Add cleanup for toolbar on document close or error
+        function cleanupDocument() {
+            if (currentSession) {
+                try {
+                    fetch(`/cleanup/${currentSession}`);
+                } catch (error) {
+                    console.error('Error cleaning up session:', error);
+                }
+            }
+            currentSession = null;
+            document.getElementById('documentToolbar').style.display = 'none';
+        }
+
+        // Update the window unload handler
+        window.addEventListener('beforeunload', cleanupDocument);
+
+        // Update the navbar button to show premium badge
+        document.addEventListener('DOMContentLoaded', function() {
+            const newButton = document.querySelector('.navbar-brand').parentElement.querySelector('button');
+            if (newButton) {
+                newButton.innerHTML = `
+                    <i class="fas fa-plus"></i> New 
+                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7em;">PRO</span>
+                `;
+            }
+        });
+
+        // Add these styles to make the signature list more visually appealing
+        const style = document.createElement('style');
+        style.textContent = `
+            .signature-item {
+                padding: 12px;
+                margin-bottom: 10px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background-color: #fff;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .signature-item:hover {
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                transform: translateY(-1px);
+            }
+
+            .signature-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid #eee;
+            }
+
+            .signature-status {
+                font-size: 0.9em;
+                padding: 2px 8px;
+                border-radius: 12px;
+                background-color: rgba(0,0,0,0.05);
+            }
+
+            .signature-details {
+                font-size: 0.9em;
+            }
+
+            .detail-row {
+                display: flex;
+                align-items: center;
+                margin: 4px 0;
+                color: #666;
+            }
+
+            .detail-row i {
+                width: 20px;
+                margin-right: 8px;
+                color: #999;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 
